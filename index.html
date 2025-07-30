@@ -3,57 +3,110 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Excel Data Table</title>
+  <title>Chemistry Education events</title>
   <style>
     body {
       font-family: Arial, sans-serif;
       padding: 2em;
       background-color: #f9f9f9;
     }
+
+    h1 {
+      margin-bottom: 0.5em;
+    }
+
+    .filter-bar {
+      margin-bottom: 1em;
+      display: flex;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 1em;
+    }
+
+    .search-input {
+      padding: 6px 10px;
+      font-size: 1rem;
+      width: 250px;
+    }
+
+    .toggle-button {
+      padding: 6px 12px;
+      font-size: 0.95rem;
+      background-color: #e0e0e0;
+      border: 1px solid #bbb;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+
+    .toggle-button:hover {
+      background-color: #d0d0d0;
+    }
+
     table {
       width: 100%;
       border-collapse: collapse;
       background-color: #fff;
-      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+      box-shadow: 0 0 10px rgba(0,0,0,0.05);
     }
+
     th, td {
       padding: 12px;
-      border: 1px solid #ddd;
+      border: 1px solid #ccc;
       text-align: left;
+      vertical-align: top;
     }
+
     th {
-      background-color: #f4f4f4;
+      background-color: #e0e0e0;
       cursor: pointer;
-      position: relative;
+      user-select: none;
     }
-    th::after {
-      content: '';
-      position: absolute;
-      right: 8px;
-      border: 5px solid transparent;
+
+    th.sortable::after {
+      content: ' ⇅';
+      font-size: 0.8em;
+      color: #666;
+      padding-left: 4px;
     }
+
     th.sorted-asc::after {
-      border-bottom-color: #333;
-      top: 50%;
-      transform: translateY(-50%);
+      content: ' ▲';
+      font-size: 0.8em;
+      color: #000;
     }
+
     th.sorted-desc::after {
-      border-top-color: #333;
-      top: 50%;
-      transform: translateY(-50%);
+      content: ' ▼';
+      font-size: 0.8em;
+      color: #000;
     }
-    .filter-input {
-      width: 100%;
-      padding: 6px;
-      box-sizing: border-box;
-      border: none;
-      border-bottom: 1px solid #ccc;
-      margin-bottom: 5px;
+
+    .title-cell a {
+      font-weight: bold;
+      color: #0066cc;
+      text-decoration: none;
+    }
+
+    .title-cell a:hover {
+      text-decoration: underline;
+    }
+
+    .description-cell {
+      font-weight: normal;
+      display: block;
+      margin-top: 4px;
+      color: #333;
     }
   </style>
 </head>
 <body>
-  <h1>Excel Data Table</h1>
+  <h1>Chemistry Education events</h1>
+
+  <div class="filter-bar">
+    <input type="text" id="searchInput" class="search-input" placeholder="Search all columns..." />
+    <button id="togglePastEvents" class="toggle-button">Include past events</button>
+  </div>
+
   <table id="excelTable">
     <thead id="tableHead"></thead>
     <tbody id="tableBody"></tbody>
@@ -61,8 +114,22 @@
 
   <script>
     let tableData = [];
-    let currentSort = { column: null, direction: 'asc' };
-    let filters = {};
+    let currentSort = { column: 'Start Date', direction: 'asc' };
+    let searchQuery = '';
+    let showPastEvents = false;
+
+    document.getElementById('searchInput').addEventListener('input', (e) => {
+      searchQuery = e.target.value.toLowerCase();
+      renderTable();
+    });
+
+    document.getElementById('togglePastEvents').addEventListener('click', () => {
+      showPastEvents = !showPastEvents;
+      document.getElementById('togglePastEvents').textContent = showPastEvents
+        ? 'Hide past events'
+        : 'Include past events';
+      renderTable();
+    });
 
     async function loadExcelData() {
       try {
@@ -77,6 +144,19 @@
       }
     }
 
+    function isDate(value) {
+      return !isNaN(Date.parse(value)) && /^\d{4}-\d{2}-\d{2}/.test(value);
+    }
+
+    function formatDate(dateStr) {
+      const date = new Date(dateStr);
+      return date.toLocaleDateString("en-GB", {
+        day: '2-digit',
+        month: 'short',
+        year: 'numeric'
+      });
+    }
+
     function renderTable() {
       const tableHead = document.getElementById('tableHead');
       const tableBody = document.getElementById('tableBody');
@@ -88,62 +168,90 @@
         return;
       }
 
-      const columns = Object.keys(tableData[0]);
+      const allColumns = Object.keys(tableData[0]);
+      const columns = allColumns.filter(col => !['Title', 'Description', 'URL'].includes(col));
+      columns.splice(1, 0, 'TitleDescription');
 
-      // Create filter input row
-      const filterRow = document.createElement('tr');
-      columns.forEach(col => {
-        const th = document.createElement('th');
-        const input = document.createElement('input');
-        input.type = 'text';
-        input.className = 'filter-input';
-        input.placeholder = `Filter ${col}`;
-        input.value = filters[col] || '';
-        input.addEventListener('input', () => {
-          filters[col] = input.value.toLowerCase();
-          renderTable();
-        });
-        th.appendChild(input);
-        filterRow.appendChild(th);
-      });
-      tableHead.appendChild(filterRow);
-
-      // Create column headers with sort functionality
       const headerRow = document.createElement('tr');
       columns.forEach(col => {
         const th = document.createElement('th');
-        th.textContent = col.replace(/_/g, ' ');
+        th.textContent = col === 'TitleDescription' ? 'Title & Description' : col.replace(/_/g, ' ');
+        th.classList.add('sortable');
         th.addEventListener('click', () => sortByColumn(col));
         if (currentSort.column === col) {
+          th.classList.remove('sortable');
           th.classList.add(currentSort.direction === 'asc' ? 'sorted-asc' : 'sorted-desc');
         }
         headerRow.appendChild(th);
       });
       tableHead.appendChild(headerRow);
 
-      // Filter and sort data
-      let filteredData = tableData.filter(row => {
-        return columns.every(col => {
-          return !filters[col] || (row[col] && row[col].toLowerCase().includes(filters[col]));
-        });
-      });
+      let filteredData = [...tableData];
 
-      if (currentSort.column) {
-        filteredData.sort((a, b) => {
-          const valA = a[currentSort.column] || '';
-          const valB = b[currentSort.column] || '';
-          return currentSort.direction === 'asc'
-            ? valA.localeCompare(valB)
-            : valB.localeCompare(valA);
+      if (!showPastEvents) {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        filteredData = filteredData.filter(row => {
+          const date = new Date(row['Start Date']);
+          return date >= today;
         });
       }
 
-      // Render rows
+      if (searchQuery.trim()) {
+        filteredData = filteredData.filter(row =>
+          Object.values(row).some(val =>
+            String(val).toLowerCase().includes(searchQuery)
+          )
+        );
+      }
+
+      if (currentSort.column) {
+        filteredData.sort((a, b) => {
+          let valA = '', valB = '';
+          if (currentSort.column === 'TitleDescription') {
+            valA = (a.Title || '') + (a.Description || '');
+            valB = (b.Title || '') + (b.Description || '');
+          } else {
+            valA = a[currentSort.column] || '';
+            valB = b[currentSort.column] || '';
+          }
+
+          if (isDate(valA) && isDate(valB)) {
+            return currentSort.direction === 'asc'
+              ? new Date(valA) - new Date(valB)
+              : new Date(valB) - new Date(valA);
+          }
+
+          return currentSort.direction === 'asc'
+            ? String(valA).localeCompare(String(valB))
+            : String(valB).localeCompare(String(valA));
+        });
+      }
+
       filteredData.forEach(row => {
         const tr = document.createElement('tr');
         columns.forEach(col => {
           const td = document.createElement('td');
-          td.textContent = row[col];
+
+          if (col === 'TitleDescription') {
+            const titleLink = document.createElement('a');
+            titleLink.href = row.URL || '#';
+            titleLink.target = '_blank';
+            titleLink.rel = 'noopener noreferrer';
+            titleLink.textContent = row.Title || '';
+            titleLink.className = 'title-cell';
+
+            const desc = document.createElement('div');
+            desc.className = 'description-cell';
+            desc.textContent = row.Description || '';
+
+            td.appendChild(titleLink);
+            td.appendChild(desc);
+          } else {
+            const val = row[col];
+            td.textContent = isDate(val) ? formatDate(val) : val;
+          }
+
           tr.appendChild(td);
         });
         tableBody.appendChild(tr);
