@@ -101,19 +101,18 @@
 
   .title-cell a {
     font-weight: 600;
-	font-size: 2rem;
+    font-size: 2rem;
     color: #2563eb;
     text-decoration: none;
   }
   
   td a {
-	  font-weight: 600;
-	  font-size: 1.125rem; /* larger title */
-	  color: #2563eb;
-	  text-decoration: none;
-	  display: inline-block;
-	}
-
+    font-weight: 600;
+    font-size: 1.125rem;
+    color: #2563eb;
+    text-decoration: none;
+    display: inline-block;
+  }
 
   .title-cell a:hover {
     text-decoration: underline;
@@ -126,10 +125,29 @@
     font-size: 0.9rem;
     color: #4b5563;
   }
+
+  /* --- Footer styling --- */
+  footer {
+    margin-top: 3rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid #d1d5db;
+    font-size: 0.95rem;
+    color: #555;
+    text-align: center;
+  }
+
+  footer a {
+    color: #2563eb;
+    text-decoration: none;
+    font-weight: 600;
+  }
+
+  footer a:hover {
+    text-decoration: underline;
+  }
 </style>
-
-
 </head>
+
 <body>
   <h1>Chemistry Education events</h1>
 
@@ -142,6 +160,18 @@
     <thead id="tableHead"></thead>
     <tbody id="tableBody"></tbody>
   </table>
+
+  <!-- -------------------- -->
+  <!--        FOOTER        -->
+  <!-- -------------------- -->
+	<footer>
+	  Submit your event details 
+	  <a href="https://forms.office.com/e/E60eZeVps4" target="_blank" rel="noopener noreferrer">here</a>
+	  to be included in this list. This is managed by the 
+	  <a href="https://www.imperial.ac.uk/chemistry-education/" target="_blank" rel="noopener noreferrer">
+		Centre for Chemistry Education at Imperial College London
+	  </a>.
+	</footer>
 
   <script>
     let tableData = [];
