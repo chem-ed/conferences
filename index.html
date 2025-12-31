@@ -3,8 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>MICER Posters</title>
-
+  <title>Chemistry Education events</title>
 <style>
   body {
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -32,6 +31,21 @@
     width: 260px;
     border: 1px solid #ccc;
     border-radius: 6px;
+  }
+
+  .toggle-button {
+    padding: 10px 16px;
+    font-size: 0.95rem;
+    background-color: #4b5563;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: background-color 0.2s;
+  }
+
+  .toggle-button:hover {
+    background-color: #374151;
   }
 
   table {
@@ -69,10 +83,12 @@
 
   th.sorted-asc::after {
     content: ' ▲';
+    color: #1f2937;
   }
 
   th.sorted-desc::after {
     content: ' ▼';
+    color: #1f2937;
   }
 
   tbody tr:hover {
@@ -83,172 +99,237 @@
     border-top: 1px solid #e5e7eb;
   }
 
+  .title-cell a {
+    font-weight: 600;
+    font-size: 2rem;
+    color: #2563eb;
+    text-decoration: none;
+  }
+  
   td a {
     font-weight: 600;
     font-size: 1.125rem;
     color: #2563eb;
     text-decoration: none;
+    display: inline-block;
   }
 
-  td a:hover {
+  .title-cell a:hover {
     text-decoration: underline;
   }
 
   .description-cell {
     display: block;
     margin-top: 4px;
+    font-weight: normal;
     font-size: 0.9rem;
     color: #4b5563;
   }
 
-  .email {
-    font-size: 0.9rem;
-    color: #4b5563;
-    margin-top: 4px;
+  /* --- Footer styling --- */
+  footer {
+    margin-top: 3rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid #d1d5db;
+    font-size: 0.95rem;
+    color: #555;
+    text-align: center;
+  }
+
+  footer a {
+    color: #2563eb;
+    text-decoration: none;
+    font-weight: 600;
+  }
+
+  footer a:hover {
+    text-decoration: underline;
   }
 </style>
 </head>
 
 <body>
-  <h1>MICER Poster Presentations</h1>
+  <h1>Chemistry Education events</h1>
 
   <div class="filter-bar">
     <input type="text" id="searchInput" class="search-input" placeholder="Search all columns..." />
+    <button id="togglePastEvents" class="toggle-button">Include past events</button>
   </div>
 
-  <table id="posterTable">
+  <table id="excelTable">
     <thead id="tableHead"></thead>
     <tbody id="tableBody"></tbody>
   </table>
 
-<script>
-  let tableData = [];
-  let searchQuery = '';
-  let currentSort = { column: null, direction: 'asc' };
+  <!-- -------------------- -->
+  <!--        FOOTER        -->
+  <!-- -------------------- -->
+	<footer>
+	  Submit your event details 
+	  <a href="https://forms.office.com/e/E60eZeVps4" target="_blank" rel="noopener noreferrer">here</a>
+	  to be included in this list. This is managed by the 
+	  <a href="https://www.imperial.ac.uk/chemistry-education/" target="_blank" rel="noopener noreferrer">
+		Centre for Chemistry Education at Imperial College London
+	  </a>.
+	</footer>
 
-  document.getElementById('searchInput').addEventListener('input', e => {
-    searchQuery = e.target.value.toLowerCase();
-    renderTable();
-  });
+  <script>
+    let tableData = [];
+    let currentSort = { column: 'Start Date', direction: 'asc' };
+    let searchQuery = '';
+    let showPastEvents = false;
 
-  async function loadData() {
-    const response = await fetch(
-      'https://raw.githubusercontent.com/chem-ed/MICER26/main/data/data.json'
-    );
-    tableData = await response.json();
-    renderTable();
-  }
-
-  function renderTable() {
-    const head = document.getElementById('tableHead');
-    const body = document.getElementById('tableBody');
-    head.innerHTML = '';
-    body.innerHTML = '';
-
-    const columns = [
-      'Entry',
-      'Poster',
-      'Presenter',
-      'Affiliation',
-      'Country'
-    ];
-
-    const headerRow = document.createElement('tr');
-    columns.forEach(col => {
-      const th = document.createElement('th');
-      th.textContent = col;
-      th.classList.add('sortable');
-      th.onclick = () => sortBy(col);
-      if (currentSort.column === col) {
-        th.classList.remove('sortable');
-        th.classList.add(
-          currentSort.direction === 'asc' ? 'sorted-asc' : 'sorted-desc'
-        );
-      }
-      headerRow.appendChild(th);
+    document.getElementById('searchInput').addEventListener('input', (e) => {
+      searchQuery = e.target.value.toLowerCase();
+      renderTable();
     });
-    head.appendChild(headerRow);
 
-    let filtered = tableData.filter(row =>
-      Object.values(row).some(val =>
-        String(val).toLowerCase().includes(searchQuery)
-      )
-    );
+    document.getElementById('togglePastEvents').addEventListener('click', () => {
+      showPastEvents = !showPastEvents;
+      document.getElementById('togglePastEvents').textContent = showPastEvents
+        ? 'Hide past events'
+        : 'Include past events';
+      renderTable();
+    });
 
-    if (currentSort.column) {
-      filtered.sort((a, b) => {
-        const valA = getSortValue(a);
-        const valB = getSortValue(b);
-        return currentSort.direction === 'asc'
-          ? valA.localeCompare(valB)
-          : valB.localeCompare(valA);
+    async function loadExcelData() {
+      try {
+        const response = await fetch('https://raw.githubusercontent.com/chem-ed/conferences/main/data/data.json');
+        if (!response.ok) throw new Error("Failed to fetch JSON");
+
+        tableData = await response.json();
+        renderTable();
+      } catch (error) {
+        console.error("Error loading data:", error);
+        document.getElementById('excelTable').innerHTML = "<tr><td>Error loading data.</td></tr>";
+      }
+    }
+
+    function isDate(value) {
+      return !isNaN(Date.parse(value)) && /^\d{4}-\d{2}-\d{2}/.test(value);
+    }
+
+    function formatDate(dateStr) {
+      const date = new Date(dateStr);
+      return date.toLocaleDateString("en-GB", {
+        day: '2-digit',
+        month: 'short',
+        year: 'numeric'
       });
     }
 
-    filtered.forEach(row => {
-      const tr = document.createElement('tr');
+    function renderTable() {
+      const tableHead = document.getElementById('tableHead');
+      const tableBody = document.getElementById('tableBody');
+      tableHead.innerHTML = '';
+      tableBody.innerHTML = '';
 
-      // Entry
-      tr.appendChild(td(row.Entry));
+      if (!Array.isArray(tableData) || tableData.length === 0) {
+        tableBody.innerHTML = "<tr><td>No data found.</td></tr>";
+        return;
+      }
 
-      // Poster
-      const posterTd = document.createElement('td');
-      const posterLink = document.createElement('a');
-      posterLink.href = row.Link_Poster;
-      posterLink.target = '_blank';
-      posterLink.textContent = row.Poster_Title;
-      posterTd.appendChild(posterLink);
+      const allColumns = Object.keys(tableData[0]);
+      const columns = allColumns.filter(col => !['Title', 'Description', 'URL'].includes(col));
+      columns.splice(1, 0, 'TitleDescription');
 
-      const abstract = document.createElement('div');
-      abstract.className = 'description-cell';
-      abstract.textContent = row.Poster_Abstract;
-      posterTd.appendChild(abstract);
-      tr.appendChild(posterTd);
+      const headerRow = document.createElement('tr');
+      columns.forEach(col => {
+        const th = document.createElement('th');
+        th.textContent = col === 'TitleDescription' ? 'Title & Description' : col.replace(/_/g, ' ');
+        th.classList.add('sortable');
+        th.addEventListener('click', () => sortByColumn(col));
+        if (currentSort.column === col) {
+          th.classList.remove('sortable');
+          th.classList.add(currentSort.direction === 'asc' ? 'sorted-asc' : 'sorted-desc');
+        }
+        headerRow.appendChild(th);
+      });
+      tableHead.appendChild(headerRow);
 
-      // Presenter
-      const presenterTd = document.createElement('td');
-      const profileLink = document.createElement('a');
-      profileLink.href = row.Link_Profile;
-      profileLink.target = '_blank';
-      profileLink.textContent = `${row.LastName}, ${row.FirstName}`;
-      presenterTd.appendChild(profileLink);
+      let filteredData = [...tableData];
 
-      const email = document.createElement('div');
-      email.className = 'email';
-      email.textContent = row.Email;
-      presenterTd.appendChild(email);
-      tr.appendChild(presenterTd);
+      if (!showPastEvents) {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        filteredData = filteredData.filter(row => {
+          const date = new Date(row['Start Date']);
+          return date >= today;
+        });
+      }
 
-      tr.appendChild(td(row.Affiliation));
-      tr.appendChild(td(row.Country));
+      if (searchQuery.trim()) {
+        filteredData = filteredData.filter(row =>
+          Object.values(row).some(val =>
+            String(val).toLowerCase().includes(searchQuery)
+          )
+        );
+      }
 
-      body.appendChild(tr);
-    });
-  }
+      if (currentSort.column) {
+        filteredData.sort((a, b) => {
+          let valA = '', valB = '';
+          if (currentSort.column === 'TitleDescription') {
+            valA = (a.Title || '') + (a.Description || '');
+            valB = (b.Title || '') + (b.Description || '');
+          } else {
+            valA = a[currentSort.column] || '';
+            valB = b[currentSort.column] || '';
+          }
 
-  function td(text) {
-    const td = document.createElement('td');
-    td.textContent = text || '';
-    return td;
-  }
+          if (isDate(valA) && isDate(valB)) {
+            return currentSort.direction === 'asc'
+              ? new Date(valA) - new Date(valB)
+              : new Date(valB) - new Date(valA);
+          }
 
-  function sortBy(column) {
-    if (currentSort.column === column) {
-      currentSort.direction = currentSort.direction === 'asc' ? 'desc' : 'asc';
-    } else {
-      currentSort.column = column;
-      currentSort.direction = 'asc';
+          return currentSort.direction === 'asc'
+            ? String(valA).localeCompare(String(valB))
+            : String(valB).localeCompare(String(valA));
+        });
+      }
+
+      filteredData.forEach(row => {
+        const tr = document.createElement('tr');
+        columns.forEach(col => {
+          const td = document.createElement('td');
+
+          if (col === 'TitleDescription') {
+            const titleLink = document.createElement('a');
+            titleLink.href = row.URL || '#';
+            titleLink.target = '_blank';
+            titleLink.rel = 'noopener noreferrer';
+            titleLink.textContent = row.Title || '';
+            titleLink.className = 'title-cell';
+
+            const desc = document.createElement('div');
+            desc.className = 'description-cell';
+            desc.textContent = row.Description || '';
+
+            td.appendChild(titleLink);
+            td.appendChild(desc);
+          } else {
+            const val = row[col];
+            td.textContent = isDate(val) ? formatDate(val) : val;
+          }
+
+          tr.appendChild(td);
+        });
+        tableBody.appendChild(tr);
+      });
     }
-    renderTable();
-  }
 
-  function getSortValue(row) {
-    if (currentSort.column === 'Poster') return row.Poster_Title || '';
-    if (currentSort.column === 'Presenter') return row.LastName || '';
-    return row[currentSort.column] || '';
-  }
+    function sortByColumn(column) {
+      if (currentSort.column === column) {
+        currentSort.direction = currentSort.direction === 'asc' ? 'desc' : 'asc';
+      } else {
+        currentSort.column = column;
+        currentSort.direction = 'asc';
+      }
+      renderTable();
+    }
 
-  loadData();
-</script>
+    loadExcelData();
+  </script>
 </body>
 </html>
